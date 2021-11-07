@@ -2,7 +2,7 @@
 
 const { kValues, kStorage, kTTL, kOnDedupe, kOnHit, kOnMiss } = require('./symbol')
 const stringify = require('safe-stable-stringify')
-const storageCreate = require('./storage')
+const createStorage = require('./storage')
 
 class Cache {
   /**
@@ -20,7 +20,7 @@ class Cache {
     opts = opts || {}
     this[kValues] = {}
     this[kTTL] = opts.ttl || 0
-    this[kStorage] = opts.storage || storageCreate()
+    this[kStorage] = opts.storage || createStorage()
     this[kOnDedupe] = opts.onDedupe || noop
     this[kOnHit] = opts.onHit || noop
     this[kOnMiss] = opts.onMiss || noop

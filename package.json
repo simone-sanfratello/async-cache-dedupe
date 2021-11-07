@@ -25,6 +25,7 @@
     "tap": "^15.0.10"
   },
   "dependencies": {
+    "abstract-logging": "^2.0.1",
     "mnemonist": "^0.38.5",
     "safe-stable-stringify": "^2.2.0"
   },

@@ -1,5 +1,7 @@
 import { Cache } from './index.js'
 
+// TODO
+
 const cache = new Cache({
   ttl: 5, // defalt ttl
   storage: new MemoryStorage({

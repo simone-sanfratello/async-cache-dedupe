@@ -1,17 +1,30 @@
 'use strict'
 
 const stringify = require('safe-stable-stringify')
+const nullLogger = require('abstract-logging')
 const StorageInterface = require('./interface')
 
+/**
+ * @typedef StorageRedisOptions
+ * @property {!RedisClient} instance
+ * @property {Logger} log
+ */
+
 class StorageRedis extends StorageInterface {
-  constructor ({ instance, log }) {
+  /**
+   * @param {StorageRedisOptions} options
+   */
+  constructor (options) {
     // TODO validate options
-    super({ instance, log })
-    this.store = instance
-    // logger is mandatory
-    this.log = log
+    super(options)
+    this.store = options.instance
+    this.log = options.log || nullLogger
   }
 
+  /**
+   * @param {string} key
+   * @returns {undefined|*} undefined if key not found
+   */
   async get (key) {
     try {
       this.log.debug({ msg: '[mercurius-cache - redis storage] get key', key })
@@ -25,7 +38,7 @@ class StorageRedis extends StorageInterface {
   async set (key, value, ttl, references) {
     try {
       this.log.debug({ msg: '[mercurius-cache - redis storage] set key', key, value, ttl, references })
-      await this.store.set(key, stringify(value), 'EX', ttl)
+      await this.store.set(key, stringify(value), 'EX', ttl * 1000)
 
       if (!references) {
         return

@@ -26,7 +26,7 @@ const StorageOptionsType = {
  * @param {StorageMemoryOptions|StorageRedisOptions} options
  * @returns {Storage}
  */
-function storageCreate (type, options) {
+function createStorage (type, options) {
   if (type === StorageOptionsType.redis) {
     return new StorageRedis(options)
   }
@@ -35,4 +35,4 @@ function storageCreate (type, options) {
 
 // TODO implement gc
 
-module.exports = storageCreate
+module.exports = createStorage
