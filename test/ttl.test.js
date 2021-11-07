@@ -14,7 +14,7 @@ test('ttl', async (t) => {
   t.plan(5)
 
   const cache = new Cache({
-    ttl: 1 // seconds
+    ttl: 1e3
   })
 
   cache.define('fetchSomething', async (query) => {
@@ -34,7 +34,7 @@ test('ttl expires', async (t) => {
   t.plan(5)
 
   const cache = new Cache({
-    ttl: 2 // seconds
+    ttl: 2e3
   })
 
   cache.define('fetchSomething', async (query) => {
