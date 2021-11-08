@@ -3,7 +3,7 @@ import { Cache } from './index.js'
 // TODO
 
 const cache = new Cache({
-  ttl: 5, // defalt ttl
+  ttl: 5, // default ttl, in seconds
   storage: new MemoryStorage({
     size: 2048,
     log: pino() // ...

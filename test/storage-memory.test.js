@@ -41,8 +41,8 @@ test('storage memory', async (t) => {
     test('should get undefined retrieving an expired value', async (t) => {
       const storage = createStorage('memory')
 
-      await storage.set('foo', 'bar', 10)
-      await sleep(50)
+      await storage.set('foo', 'bar', 1)
+      await sleep(2000)
 
       t.equal(await storage.get('foo'), undefined)
     })
@@ -51,14 +51,13 @@ test('storage memory', async (t) => {
   test('set', async (t) => {
     test('should set a value, with ttl', async (t) => {
       const storage = createStorage('memory')
-      await storage.set('foo', 'bar', 100)
+      await storage.set('foo', 'bar', 1)
 
       const stored = storage.store.get('foo')
 
       t.equal(stored.value, 'bar')
-      t.ok(stored.expires > Date.now())
-      await sleep(100)
-      t.ok(stored.expires < Date.now() + 100)
+      t.equal(stored.ttl, 1)
+      t.ok(stored.start < Date.now())
     })
 
     test('should not set a value with ttl < 1', async (t) => {

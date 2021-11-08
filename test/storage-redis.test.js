@@ -7,7 +7,6 @@ const Redis = require('ioredis')
 
 const sleep = promisify(setTimeout)
 
-// TODO see https://github.com/fastify/fastify-redis/blob/master/.github/workflows/ci.yml
 const redisClient = new Redis()
 
 const { test, before, beforeEach, teardown } = t
@@ -55,8 +54,8 @@ test('storage redis', async (t) => {
     test('should get undefined retrieving an expired value', async (t) => {
       const storage = createStorage('redis', { client: redisClient })
 
-      await storage.set('foo', 'bar', 10)
-      await sleep(100)
+      await storage.set('foo', 'bar', 1)
+      await sleep(2000)
 
       t.equal(await storage.get('foo'), undefined)
     })
@@ -90,9 +89,8 @@ test('storage redis', async (t) => {
       const value = await storage.store.get('foo')
       t.equal(JSON.parse(value), 'bar')
 
-      const ttl = await storage.store.pttl('foo')
-      t.ok(ttl > 90)
-      t.ok(ttl < 110)
+      const ttl = await storage.store.ttl('foo')
+      t.equal(ttl, 100)
     })
 
     test('should not set a value with ttl < 1', async (t) => {
@@ -133,7 +131,9 @@ test('storage redis', async (t) => {
       await storage.set('foo2', 'bar2', 100, ['fooers'])
 
       const references = await storage.store.smembers('fooers')
-      t.same(references, ['foo1', 'foo2'])
+      t.equal(references.length, 2)
+      t.ok(references.includes('foo1'))
+      t.ok(references.includes('foo2'))
     })
 
     test('should not thow on error', async (t) => {

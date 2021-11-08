@@ -210,7 +210,7 @@ test('do not cache failures', async (t) => {
 test('clear the full cache', async (t) => {
   t.plan(7)
 
-  const cache = new Cache({ ttl: 1e3 })
+  const cache = new Cache({ ttl: 1 })
 
   cache.define('fetchA', async (query) => {
     t.pass('a called')
@@ -252,7 +252,7 @@ test('clear the full cache', async (t) => {
 test('clears only one method', async (t) => {
   t.plan(6)
 
-  const cache = new Cache({ ttl: 1e3 })
+  const cache = new Cache({ ttl: 1 })
 
   cache.define('fetchA', async (query) => {
     t.pass('a called')
@@ -294,7 +294,7 @@ test('clears only one method', async (t) => {
 test('clears only one method with one value', async (t) => {
   t.plan(5)
 
-  const cache = new Cache({ ttl: 10e3 })
+  const cache = new Cache({ ttl: 10 })
 
   cache.define('fetchA', async (query) => {
     t.pass('a called')
@@ -340,7 +340,7 @@ test('throws for methods in the property chain', async function (t) {
 test('should cache with references', async function (t) {
   t.plan(1)
 
-  const cache = new Cache({ ttl: 60e3 })
+  const cache = new Cache({ ttl: 60 })
 
   cache.define('run', {
     references: (args, key, result) => {
@@ -355,7 +355,7 @@ test('should cache with references', async function (t) {
 test('AsyncLocalStoreage', (t) => {
   t.plan(5)
   const als = new AsyncLocalStorage()
-  const cache = new Cache({ ttl: 1e3 })
+  const cache = new Cache({ ttl: 1 })
 
   cache.define('fetchSomething', async (query) => {
     t.equal(query, 42)

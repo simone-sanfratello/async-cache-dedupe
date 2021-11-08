@@ -8,7 +8,7 @@ class Cache {
   /**
    * TODO signature
    * @param {Options} opts
-   * @param {number?} [opts.ttl=0] - in ms; default 0 seconds, means no cache, only do dedupe
+   * @param {number?} [opts.ttl=0] - in seconds; default 0 seconds, means no cache, only do dedupe
    * @param {Storage?} [opts.storage] - the storage to use; default is in-memory storage
    * @param {function} opts.onDedupe
    * @param {function} opts.onHit

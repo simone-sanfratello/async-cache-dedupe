@@ -35,7 +35,8 @@ class StorageMemory extends StorageInterface {
 
     const entry = this.store.get(key)
     if (entry) {
-      if (entry.expires > Date.now()) {
+      this.log.debug({ msg: 'acd/storage/memory.get, entry', entry, now: now() })
+      if (entry.start + entry.ttl > now()) {
         this.log.debug({ msg: 'acd/storage/memory.get, key is NOT expired', key, entry })
         return entry.value
       }
@@ -44,16 +45,12 @@ class StorageMemory extends StorageInterface {
     }
   }
 
-  async remove (key) {
-    this.log.debug({ msg: 'acd/storage/memory.remove', key })
-
-    if (!this.store.has(key)) {
-      return
-    }
-    this.store.set(key, undefined)
-    // TODO remove key in references? do it lazy/gc?
-  }
-
+  /**
+   * @param {string} key
+   * @param {*} value
+   * @param {number} ttl - ttl in seconds; zero means key will not be stored
+   * @param {?string[]} references
+   */
   async set (key, value, ttl, references) {
     this.log.debug({ msg: 'acd/storage/memory.set', key, value, ttl, references })
 
@@ -61,7 +58,7 @@ class StorageMemory extends StorageInterface {
     if (!ttl || ttl < 0) {
       return
     }
-    this.store.set(key, { value, expires: Date.now() + ttl })
+    this.store.set(key, { value, ttl, start: now() })
 
     if (!references) {
       return
@@ -79,6 +76,19 @@ class StorageMemory extends StorageInterface {
       }
       this.references.set(reference, keys)
     }
+  }
+
+  /**
+   * @param {string} key
+   */
+  async remove (key) {
+    this.log.debug({ msg: 'acd/storage/memory.remove', key })
+
+    if (!this.store.has(key)) {
+      return
+    }
+    this.store.set(key, undefined)
+    // TODO remove key in references? do it lazy/gc?
   }
 
   /**
@@ -101,6 +111,9 @@ class StorageMemory extends StorageInterface {
     // TODO return/callback delete keys?
   }
 
+  /**
+   * @param {string} name
+   */
   async clear (name) {
     this.log.debug({ msg: 'acd/storage/memory.clear', name })
 
@@ -135,6 +148,21 @@ class StorageMemory extends StorageInterface {
     this.store = new LRUCache(this.size)
     this.references = new Map()
   }
+}
+
+let _timer
+
+function now () {
+  if (_timer !== undefined) {
+    return _timer
+  }
+  _timer = Math.floor(Date.now() / 1000)
+  setTimeout(_clearTimer, 1000).unref()
+  return _timer
+}
+
+function _clearTimer () {
+  _timer = undefined
 }
 
 module.exports = StorageMemory

@@ -39,6 +39,12 @@ class StorageRedis extends StorageInterface {
     }
   }
 
+  /**
+   * @param {string} key
+   * @param {*} value
+   * @param {number} ttl - ttl in seconds; zero means key will not be stored
+   * @param {?string[]} references
+   */
   async set (key, value, ttl, references) {
     this.log.debug({ msg: 'acd/storage/redis.set key', key, value, ttl, references })
 
@@ -48,7 +54,7 @@ class StorageRedis extends StorageInterface {
     }
 
     try {
-      await this.store.set(key, stringify(value), 'PX', ttl)
+      await this.store.set(key, stringify(value), 'EX', ttl)
 
       if (!references) {
         return
@@ -64,6 +70,9 @@ class StorageRedis extends StorageInterface {
     }
   }
 
+  /**
+   * @param {string} key
+   */
   async remove (key) {
     this.log.debug({ msg: 'acd/storage/redis.remove', key })
     try {
@@ -74,6 +83,9 @@ class StorageRedis extends StorageInterface {
     }
   }
 
+  /**
+   * @param {string[]} references
+   */
   async invalidate (references) {
     this.log.debug({ msg: 'acd/storage/redis.invalidate', references })
 
@@ -99,6 +111,9 @@ class StorageRedis extends StorageInterface {
     }
   }
 
+  /**
+   * @param {string} name
+   */
   async clear (name) {
     this.log.debug({ msg: 'acd/storage/redis.clear', name })
 
