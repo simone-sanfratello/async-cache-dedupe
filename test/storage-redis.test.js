@@ -7,7 +7,7 @@ const Redis = require('ioredis')
 
 const sleep = promisify(setTimeout)
 
-// TODO add test with spy, move these to be skipped on CI
+// TODO see https://github.com/fastify/fastify-redis/blob/master/.github/workflows/ci.yml
 const redisClient = new Redis()
 
 const { test, before, beforeEach, teardown } = t
