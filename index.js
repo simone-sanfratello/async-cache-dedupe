@@ -137,6 +137,7 @@ class Wrapper {
     }
 
     const references = this.references(args, key, result)
+    // TODO validate references?
     await this.storage.set(storageKey, result, this.ttl, references)
 
     return result

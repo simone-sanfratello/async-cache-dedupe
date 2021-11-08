@@ -115,11 +115,20 @@ test('works with custom serialize', async (t) => {
   t.same([...cache[kValues].fetchSomething.dedupes.keys()], ['42', '24'])
 })
 
-test('missing serialize', async (t) => {
+test('wrong serialize', async (t) => {
   const cache = new Cache()
   t.throws(function () {
     cache.define('something', {
       serialize: 42
+    }, async () => { })
+  })
+})
+
+test('wrong references', async (t) => {
+  const cache = new Cache()
+  t.throws(function () {
+    cache.define('something', {
+      references: 42
     }, async () => { })
   })
 })
@@ -326,6 +335,21 @@ test('throws for methods in the property chain', async function (t) {
       cache.define(key, () => { })
     })
   }
+})
+
+test('should cache with references', async function (t) {
+  t.plan(1)
+
+  const cache = new Cache({ ttl: 60e3 })
+
+  cache.define('run', {
+    references: (args, key, result) => {
+      t.pass('references called')
+      return ['some-reference']
+    }
+  }, () => 'something')
+
+  await cache.run(1)
 })
 
 test('AsyncLocalStoreage', (t) => {
