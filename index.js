@@ -63,11 +63,15 @@ class Cache {
     const wrapper = new Wrapper(func, name, serialize, references, storage, ttl, onDedupe, onHit, onMiss)
 
     this[kValues][name] = wrapper
-    this[name] = Cache.add.bind(wrapper)
+    this[name] = wrapper.add.bind(wrapper)
   }
 
   async clear (name, value) {
     if (name) {
+      if (!this[kValues][name]) {
+        throw new Error(`${name} is not defined in the cache`)
+      }
+
       await this[kValues][name].clear(value)
       return
     }
@@ -80,20 +84,29 @@ class Cache {
   }
 
   async get (name, key) {
-    // TODO validate
-    console.log('Cache.get')
+    if (!this[kValues][name]) {
+      throw new Error(`${name} is not defined in the cache`)
+    }
+
+    // TODO validate?
     return this[kValues][name].get(key)
   }
 
   async set (name, key, value, ttl, references) {
-    // TODO validate
-    console.log('Cache.set')
+    if (!this[kValues][name]) {
+      throw new Error(`${name} is not defined in the cache`)
+    }
+
+    // TODO validate?
     return this[kValues][name].set(key, value, ttl, references)
   }
 
   async invalidate (name, references) {
-    // TODO validate
-    console.log('Cache.invalidate')
+    if (!this[kValues][name]) {
+      throw new Error(`${name} is not defined in the cache`)
+    }
+
+    // TODO validate?
     return this[kValues][name].invalidate(references)
   }
 }
@@ -195,7 +208,7 @@ class Wrapper {
   }
 
   async clear (value) {
-    // TODO validate
+    // TODO validate?
     if (value) {
       const key = this.getKey(value)
       this.dedupes.set(key, undefined)
@@ -207,17 +220,14 @@ class Wrapper {
   }
 
   async get (key) {
-    console.log('Wrapper.get')
     return this.storage.get(key)
   }
 
   async set (key, value, ttl, references) {
-    console.log('Wrapper.set')
     return this.storage.set(key, value, ttl, references)
   }
 
   async invalidate (references) {
-    console.log('Wrapper.invalidate')
     return this.storage.invalidate(references)
   }
 }
