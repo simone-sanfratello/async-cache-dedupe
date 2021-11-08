@@ -53,7 +53,7 @@ class Cache {
       throw new TypeError('references must be a function')
     }
 
-    // TODO we could even have a different storage for each key
+    // TODO doc we could even have a different storage for each key
     const storage = opts.storage || this[kStorage]
     const ttl = opts.ttl || this[kTTL]
     const onDedupe = opts.onDedupe || this[kOnDedupe]
@@ -63,7 +63,7 @@ class Cache {
     const wrapper = new Wrapper(func, name, serialize, references, storage, ttl, onDedupe, onHit, onMiss)
 
     this[kValues][name] = wrapper
-    this[name] = wrapper.add.bind(wrapper)
+    this[name] = Cache.add.bind(wrapper)
   }
 
   async clear (name, value) {
@@ -77,6 +77,24 @@ class Cache {
       clears.push(wrapper.clear())
     }
     await Promise.all(clears)
+  }
+
+  async get (name, key) {
+    // TODO validate
+    console.log('Cache.get')
+    return this[kValues][name].get(key)
+  }
+
+  async set (name, key, value, ttl, references) {
+    // TODO validate
+    console.log('Cache.set')
+    return this[kValues][name].set(key, value, ttl, references)
+  }
+
+  async invalidate (name, references) {
+    // TODO validate
+    console.log('Cache.invalidate')
+    return this[kValues][name].invalidate(references)
   }
 }
 
@@ -97,6 +115,19 @@ class Wrapper {
     this.onMiss = onMiss
   }
 
+  getKey (args) {
+    const id = this.serialize ? this.serialize(args) : args
+    return typeof id === 'string' ? id : stringify(id)
+  }
+
+  getStorageKey (key) {
+    return `${this.name}~${key}`
+  }
+
+  getStorageName () {
+    return `${this.name}~`
+  }
+
   add (args) {
     const key = this.getKey(args)
 
@@ -112,7 +143,9 @@ class Wrapper {
     return query.promise
   }
 
-  // wrap the original func to sync storage
+  /**
+   * wrap the original func to sync storage
+   */
   async wrapFunction (args, key) {
     const storageKey = this.getStorageKey(key)
     const data = await this.storage.get(storageKey)
@@ -123,8 +156,6 @@ class Wrapper {
 
     this.onMiss(key)
 
-    // TODO check this block for leaks and issues
-    // it should be safe because it's wrapped by query.promise
     const result = await this.func(args, key)
 
     if (this.ttl < 1) {
@@ -136,7 +167,7 @@ class Wrapper {
       return result
     }
 
-    const references = this.references(args, key, result)
+    const references = await this.references(args, key, result)
     // TODO validate references?
     await this.storage.set(storageKey, result, this.ttl, references)
 
@@ -163,20 +194,8 @@ class Wrapper {
       })
   }
 
-  getKey (args) {
-    const id = this.serialize ? this.serialize(args) : args
-    return typeof id === 'string' ? id : stringify(id)
-  }
-
-  getStorageKey (key) {
-    return `${this.name}~${key}`
-  }
-
-  getStorageName () {
-    return `${this.name}~`
-  }
-
   async clear (value) {
+    // TODO validate
     if (value) {
       const key = this.getKey(value)
       this.dedupes.set(key, undefined)
@@ -185,6 +204,21 @@ class Wrapper {
     }
     await this.storage.clear(this.getStorageName())
     this.dedupes.clear()
+  }
+
+  async get (key) {
+    console.log('Wrapper.get')
+    return this.storage.get(key)
+  }
+
+  async set (key, value, ttl, references) {
+    console.log('Wrapper.set')
+    return this.storage.set(key, value, ttl, references)
+  }
+
+  async invalidate (references) {
+    console.log('Wrapper.invalidate')
+    return this.storage.invalidate(references)
   }
 }
 
