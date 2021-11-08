@@ -9,7 +9,7 @@ const DEFAULT_CACHE_SIZE = 1024
 /**
  * @typedef StorageMemoryOptions
  * @property {?number} [size=1024]
- * @property {Logger} log
+ * @property {?Logger} [log]
  */
 
 class StorageMemory extends StorageInterface {
@@ -32,6 +32,7 @@ class StorageMemory extends StorageInterface {
    */
   async get (key) {
     this.log.debug({ msg: 'acd/storage/memory.get', key })
+
     const entry = this.store.get(key)
     if (entry) {
       if (entry.expires > Date.now()) {
@@ -45,6 +46,7 @@ class StorageMemory extends StorageInterface {
 
   async remove (key) {
     this.log.debug({ msg: 'acd/storage/memory.remove', key })
+
     if (!this.store.has(key)) {
       return
     }
@@ -54,6 +56,7 @@ class StorageMemory extends StorageInterface {
 
   async set (key, value, ttl, references) {
     this.log.debug({ msg: 'acd/storage/memory.set', key, value, ttl, references })
+
     ttl = Number(ttl)
     if (!ttl || ttl < 0) {
       return
@@ -127,6 +130,8 @@ class StorageMemory extends StorageInterface {
   }
 
   async refresh () {
+    this.log.debug({ msg: 'acd/storage/memory.refresh' })
+
     this.store = new LRUCache(this.size)
     this.references = new Map()
   }

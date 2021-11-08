@@ -6,8 +6,8 @@ const StorageInterface = require('./interface')
 
 /**
  * @typedef StorageRedisOptions
- * @property {!RedisClient} instance
- * @property {Logger} log
+ * @property {!RedisClient} client
+ * @property {?Logger} log
  */
 
 class StorageRedis extends StorageInterface {
@@ -17,7 +17,7 @@ class StorageRedis extends StorageInterface {
   constructor (options) {
     // TODO validate options
     super(options)
-    this.store = options.instance
+    this.store = options.client
     this.log = options.log || nullLogger
   }
 
@@ -26,19 +26,29 @@ class StorageRedis extends StorageInterface {
    * @returns {undefined|*} undefined if key not found
    */
   async get (key) {
+    this.log.debug({ msg: 'acd/storage/redis.get', key })
+
     try {
-      this.log.debug({ msg: '[mercurius-cache - redis storage] get key', key })
       const value = await this.store.get(key)
+      if (!value) {
+        return undefined
+      }
       return JSON.parse(value)
     } catch (err) {
-      this.log.error({ msg: '[mercurius-cache - redis storage] error on get', err, key })
+      this.log.error({ msg: 'acd/storage/redis.get error', err, key })
     }
   }
 
   async set (key, value, ttl, references) {
+    this.log.debug({ msg: 'acd/storage/redis.set key', key, value, ttl, references })
+
+    ttl = Number(ttl)
+    if (!ttl || ttl < 0) {
+      return
+    }
+
     try {
-      this.log.debug({ msg: '[mercurius-cache - redis storage] set key', key, value, ttl, references })
-      await this.store.set(key, stringify(value), 'EX', ttl * 1000)
+      await this.store.set(key, stringify(value), 'PX', ttl)
 
       if (!references) {
         return
@@ -46,28 +56,35 @@ class StorageRedis extends StorageInterface {
       for (let i = 0; i < references.length; i++) {
         const reference = references[i]
         // TODO can be done in 1 query? pipeline?
-        this.log.debug({ msg: '[mercurius-cache - redis storage] set reference', key, reference })
+        this.log.debug({ msg: 'acd/storage/redis.set reference', key, reference })
         this.store.sadd(reference, key)
       }
     } catch (err) {
-      this.log.error({ msg: '[mercurius-cache - redis storage] error on set', err, key })
+      this.log.error({ msg: 'acd/storage/redis.set error', err, key, ttl, references })
     }
   }
 
+  async remove (key) {
+    this.log.debug({ msg: 'acd/storage/redis.remove', key })
+
+    this.store.del(key)
+    // TODO remove key in references? do it lazy/gc?
+  }
+
   async invalidate (references) {
-    this.log.debug({ msg: '[mercurius-cache - redis storage] invalidate', references })
+    this.log.debug({ msg: 'acd/storage/redis.invalidate', references })
     // TODO can nested loops be avoided?
     for (let i = 0; i < references.length; i++) {
       const reference = references[i]
       // TODO pipeline?
       const keys = await this.store.smembers(reference)
-      this.log.debug({ msg: '[mercurius-cache - redis storage] got keys to invalidate', keys })
+      this.log.debug({ msg: 'acd/storage/redis.invalidate got keys to be invalidated', keys })
       if (!keys || keys.length < 1) {
         continue
       }
       for (let j = 0; j < keys.length; j++) {
         // TODO can be done in 1 query? pipeline?
-        this.log.debug({ msg: '[mercurius-cache - redis storage] del key' + keys[j] })
+        this.log.debug({ msg: 'acd/storage/redis.del key' + keys[j] })
         // TODO! if not store key => this._store.sdel(reference, key)
         await this.store.del(keys[j])
       }

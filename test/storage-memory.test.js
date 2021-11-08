@@ -8,7 +8,7 @@ const sleep = promisify(setTimeout)
 
 const { test } = t
 
-test('storage', async (t) => {
+test('storage memory', async (t) => {
   test('should get an instance with default options', async (t) => {
     const storage = createStorage('memory')
 
@@ -24,6 +24,7 @@ test('storage', async (t) => {
   test('get', async (t) => {
     test('should get a value by a key previously stored', async (t) => {
       const storage = createStorage('memory')
+
       await storage.set('foo', 'bar', 100)
 
       t.equal(await storage.get('foo'), 'bar')
@@ -31,6 +32,7 @@ test('storage', async (t) => {
 
     test('should get undefined retrieving a non stored key', async (t) => {
       const storage = createStorage('memory')
+
       await storage.set('foo', 'bar', 100)
 
       t.equal(await storage.get('no-foo'), undefined)
@@ -38,6 +40,7 @@ test('storage', async (t) => {
 
     test('should get undefined retrieving an expired value', async (t) => {
       const storage = createStorage('memory')
+
       await storage.set('foo', 'bar', 10)
       await sleep(50)
 
@@ -51,6 +54,7 @@ test('storage', async (t) => {
       await storage.set('foo', 'bar', 100)
 
       const stored = storage.store.get('foo')
+
       t.equal(stored.value, 'bar')
       t.ok(stored.expires > Date.now())
       await sleep(100)
@@ -59,6 +63,7 @@ test('storage', async (t) => {
 
     test('should not set a value with ttl < 1', async (t) => {
       const storage = createStorage('memory')
+
       await storage.set('foo', 'bar', 0)
 
       t.equal(await storage.get('foo'), undefined)
@@ -89,6 +94,7 @@ test('storage', async (t) => {
 
     test('should add a key to an existing reference list', async (t) => {
       const storage = createStorage('memory')
+
       await storage.set('foo1', 'bar1', 100, ['fooers'])
       await storage.set('foo2', 'bar2', 100, ['fooers'])
 
@@ -103,6 +109,7 @@ test('storage', async (t) => {
       await storage.set('foo', 'bar', 10e3, ['fooers'])
 
       await storage.remove('foo')
+
       t.equal(await storage.get('foo'), undefined)
     })
 
@@ -111,6 +118,7 @@ test('storage', async (t) => {
       await storage.set('foo', 'bar', 10e3, ['fooers'])
 
       await storage.remove('fooz')
+
       t.equal(await storage.get('foo'), 'bar')
       t.equal(await storage.get('fooz'), undefined)
     })
@@ -151,6 +159,7 @@ test('storage', async (t) => {
       await storage.set('baz', 'buz', 10e3, ['bazers'])
 
       await storage.clear()
+
       t.equal(storage.store.size, 0)
       t.equal(storage.references.size, 0)
     })
