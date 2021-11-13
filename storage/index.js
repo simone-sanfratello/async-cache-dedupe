@@ -33,6 +33,4 @@ function createStorage (type, options) {
   return new StorageMemory(options)
 }
 
-// TODO implement gc
-
 module.exports = createStorage

@@ -64,7 +64,7 @@ class StorageRedis extends StorageInterface {
       for (let i = 0; i < references.length; i++) {
         const reference = references[i]
         this.log.debug({ msg: 'acd/storage/redis.set reference', key, reference })
-        writes.push(['sadd', reference, key])
+        writes.push(['sadd', 'r:' + reference, key])
       }
       await this.store.pipeline(writes).exec()
     } catch (err) {
@@ -73,39 +73,45 @@ class StorageRedis extends StorageInterface {
   }
 
   /**
-   * @param {string} key
+   * remove all entries if name is not provided
+   * remove entries where key starts with name if provided
+   * TODO sync references
+   * @param {?string} name
    */
   async remove (key) {
     this.log.debug({ msg: 'acd/storage/redis.remove', key })
     try {
       this.store.del(key)
-    // TODO remove key in references? do it lazy/gc?
     } catch (err) {
       this.log.error({ msg: 'acd/storage/redis.remove error', err, key })
     }
   }
 
   /**
+   * TODO sync references
    * @param {string[]} references
    */
   async invalidate (references) {
     this.log.debug({ msg: 'acd/storage/redis.invalidate', references })
 
     try {
-      const reads = references.map(reference => ['smembers', reference])
-      const [keys] = await this.store.pipeline(reads).exec()
+      const reads = references.map(reference => ['smembers', 'r:' + reference])
+      const keys = await this.store.pipeline(reads).exec()
+
+      this.log.debug({ msg: 'acd/storage/redis.invalidate keys', keys })
 
       const writes = []
       for (let i = 0; i < keys.length; i++) {
-        this.log.debug({ msg: 'acd/storage/redis.invalidate got keys to be invalidated', keys })
-        for (let j = 0; j < keys.length; j++) {
-          this.log.debug({ msg: 'acd/storage/redis.del key' + keys[j] })
-          writes.push(['del', keys[j]])
+        const key0 = keys[i][1]
+        this.log.debug({ msg: 'acd/storage/redis.invalidate got keys to be invalidated', keys: key0 })
+        for (let j = 0; j < key0.length; j++) {
+          const key1 = key0[j]
+          this.log.debug({ msg: 'acd/storage/redis.del key' + key1 })
+          writes.push(['del', key1])
         }
       }
 
       await this.store.pipeline(writes).exec()
-    // TODO update references removing deleted keys? gc?
     } catch (err) {
       this.log.error({ msg: 'acd/storage/redis.invalidate error', err, references })
     }
