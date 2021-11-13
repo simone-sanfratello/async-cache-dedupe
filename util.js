@@ -50,9 +50,16 @@ function bsearchIndex (array, value) {
 
   while (start <= end) {
     const index = Math.floor((start + end) / 2)
-    if (array[index] === value) { return index }
 
-    if (array[index] < value) { start = index + 1 } else { end = index - 1 }
+    if (array[index] === value) {
+      return index
+    }
+
+    if (array[index] < value) {
+      start = index + 1
+    } else {
+      end = index - 1
+    }
   }
 
   return -1

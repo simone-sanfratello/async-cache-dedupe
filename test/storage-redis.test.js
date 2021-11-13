@@ -136,7 +136,7 @@ test('storage redis', async (t) => {
       t.ok(references.includes('foo2'))
     })
 
-    skip('should update the key references', async (t) => {
+    skip('should update the key references, case #1', async (t) => {
       const storage = createStorage('redis', { client: redisClient })
 
       await storage.set('foo', 'bar1', 100, ['fooers', 'mooers'])
@@ -153,6 +153,35 @@ test('storage redis', async (t) => {
 
       references = await storage.store.smembers('r:tooers')
       t.equal(references.length, 0)
+    })
+
+    skip('should update the key references, case #2', async (t) => {
+      // TODO
+      const storage = createStorage('memory')
+
+      await storage.set('foo', 'bar1', 100, ['fooers', 'mooers'])
+      await storage.set('foo', 'bar2', 100, ['mooers', 'tooers'])
+
+      t.equal(storage.referencesKeys.get('fooers'), undefined)
+      t.same(storage.referencesKeys.get('mooers'), ['foo'])
+      t.same(storage.referencesKeys.get('tooers'), ['foo'])
+
+      t.same(storage.keysReferences.get('foo'), ['mooers', 'tooers'])
+    })
+
+    skip('should update the key references, case #3', async (t) => {
+      // TODO
+      const storage = createStorage('memory')
+
+      await storage.set('foo', 'bar1', 100, ['a', 'b'])
+      await storage.set('foo', 'bar2', 100, ['z', 'b', 'd'])
+
+      t.equal(storage.referencesKeys.get('a'), undefined)
+      t.same(storage.referencesKeys.get('b'), ['foo'])
+      t.same(storage.referencesKeys.get('d'), ['foo'])
+      t.same(storage.referencesKeys.get('z'), ['foo'])
+
+      t.same(storage.keysReferences.get('foo'), ['b', 'd', 'z'])
     })
 
     test('should not thow on error', async (t) => {
@@ -194,6 +223,34 @@ test('storage redis', async (t) => {
 
       t.equal(await storage.get('foo'), 'bar')
       t.equal(await storage.get('fooz'), undefined)
+    })
+
+    skip('should remove a key but not references if still active', async (t) => {
+      // TODO
+      const storage = createStorage('memory')
+      await storage.set('a', 1, 10, ['fooers', 'vowels'])
+      await storage.set('b', 1, 10, ['fooers', 'consonantes'])
+      await storage.set('c', 1, 10, ['fooers', 'consonantes'])
+      await storage.set('d', 1, 10, ['consonantes'])
+      await storage.set('e', 1, 10, ['vowels'])
+
+      await storage.remove('a')
+
+      t.equal(await storage.get('a'), undefined)
+      t.equal(await storage.get('b'), 1)
+      t.equal(await storage.get('c'), 1)
+      t.equal(await storage.get('d'), 1)
+      t.equal(await storage.get('e'), 1)
+
+      t.same(storage.referencesKeys.get('fooers'), ['b', 'c'])
+      t.same(storage.referencesKeys.get('consonantes'), ['b', 'c', 'd'])
+      t.same(storage.referencesKeys.get('vowels'), ['e'])
+
+      t.same(storage.keysReferences.get('a'), undefined)
+      t.same(storage.keysReferences.get('b'), ['fooers', 'consonantes'])
+      t.same(storage.keysReferences.get('c'), ['fooers', 'consonantes'])
+      t.same(storage.keysReferences.get('d'), ['consonantes'])
+      t.same(storage.keysReferences.get('e'), ['vowels'])
     })
 
     test('should not thow on error', async (t) => {
@@ -257,6 +314,59 @@ test('storage redis', async (t) => {
       t.equal(await storage.get('boo~1'), undefined)
     })
 
+    skip('should remove storage keys by references, but not the ones still alive', async (t) => {
+      // TODO
+      const storage = createStorage('memory')
+      await storage.set('foo~1', 'bar', 1, ['fooers', 'foo:1'])
+      await storage.set('foo~boo', 'baz', 1, ['fooers', 'booers'])
+      await storage.set('boo~1', 'fiz', 1, ['booers', 'boo:1'])
+
+      const removed = await storage.invalidate(['fooers'])
+
+      t.same(removed, ['foo~1', 'foo~boo'])
+
+      t.equal(await storage.get('foo~1'), undefined)
+      t.equal(await storage.get('boo~1'), 'fiz')
+      t.equal(await storage.get('foo~boo'), undefined)
+
+      t.equal(storage.referencesKeys.get('fooers'), undefined)
+      t.equal(storage.referencesKeys.get('foo:1'), undefined)
+      t.same(storage.referencesKeys.get('booers'), ['boo~1'])
+
+      t.equal(storage.keysReferences.get('foo~1'), undefined)
+      t.equal(storage.keysReferences.get('foo~boo'), undefined)
+      t.same(storage.keysReferences.get('boo~1'), ['booers', 'boo:1'])
+    })
+
+    skip('should remove a keys and references and also linked ones', async (t) => {
+      // TODO
+      const storage = createStorage('memory')
+      await storage.set('a', 1, 10, ['fooers', 'vowels', 'empty'])
+      await storage.set('b', 1, 10, ['fooers', 'consonantes'])
+      await storage.set('c', 1, 10, ['fooers', 'consonantes'])
+      await storage.set('d', 1, 10, ['consonantes'])
+      await storage.set('e', 1, 10, ['vowels'])
+
+      await storage.invalidate(['fooers'])
+
+      t.equal(await storage.get('a'), undefined)
+      t.equal(await storage.get('b'), undefined)
+      t.equal(await storage.get('c'), undefined)
+      t.equal(await storage.get('d'), 1)
+      t.equal(await storage.get('e'), 1)
+
+      t.same(storage.referencesKeys.get('fooers'), undefined)
+      t.same(storage.referencesKeys.get('empty'), undefined)
+      t.same(storage.referencesKeys.get('consonantes'), ['d'])
+      t.same(storage.referencesKeys.get('vowels'), ['e'])
+
+      t.same(storage.keysReferences.get('a'), undefined)
+      t.same(storage.keysReferences.get('b'), undefined)
+      t.same(storage.keysReferences.get('c'), undefined)
+      t.same(storage.keysReferences.get('d'), ['consonantes'])
+      t.same(storage.keysReferences.get('e'), ['vowels'])
+    })
+
     test('should not thow on error', async (t) => {
       t.plan(3)
       const storage = createStorage('redis', {
@@ -300,6 +410,35 @@ test('storage redis', async (t) => {
       t.equal(await storage.get('foo~1'), undefined)
       t.equal(await storage.get('foo~2'), undefined)
       t.equal(await storage.get('boo~1'), 'fiz')
+    })
+
+    skip('should clear a keys and their references', async (t) => {
+      // TODO
+      const storage = createStorage('memory')
+      await storage.set('a-a', 1, 10, ['fooers', 'vowels', 'empty'])
+      await storage.set('a-b', 1, 10, ['fooers', 'consonantes'])
+      await storage.set('a-c', 1, 10, ['fooers', 'consonantes'])
+      await storage.set('b-d', 1, 10, ['consonantes'])
+      await storage.set('b-e', 1, 10, ['vowels'])
+
+      await storage.clear('a-')
+
+      t.equal(await storage.get('a-a'), undefined)
+      t.equal(await storage.get('a-b'), undefined)
+      t.equal(await storage.get('a-c'), undefined)
+      t.equal(await storage.get('b-d'), 1)
+      t.equal(await storage.get('b-e'), 1)
+
+      t.same(storage.referencesKeys.get('fooers'), undefined)
+      t.same(storage.referencesKeys.get('empty'), undefined)
+      t.same(storage.referencesKeys.get('consonantes'), ['b-d'])
+      t.same(storage.referencesKeys.get('vowels'), ['b-e'])
+
+      t.same(storage.keysReferences.get('a-a'), undefined)
+      t.same(storage.keysReferences.get('a-b'), undefined)
+      t.same(storage.keysReferences.get('a-c'), undefined)
+      t.same(storage.keysReferences.get('b-d'), ['consonantes'])
+      t.same(storage.keysReferences.get('b-e'), ['vowels'])
     })
 
     test('should not thow on error', async (t) => {

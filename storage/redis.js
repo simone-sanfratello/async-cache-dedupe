@@ -70,6 +70,7 @@ class StorageRedis extends StorageInterface {
     } catch (err) {
       this.log.error({ msg: 'acd/storage/redis.set error', err, key, ttl, references })
     }
+    // TODO clear references of expired keys
   }
 
   /**

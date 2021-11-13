@@ -90,7 +90,7 @@ test('storage memory', async (t) => {
       t.same(storage.keysReferences.get('foo'), ['fooers'])
     })
 
-    test('should add a key to an existing reference list', async (t) => {
+    test('should add a key to an existing reference', async (t) => {
       const storage = createStorage('memory')
 
       await storage.set('foo1', 'bar1', 1, ['fooers'])
@@ -142,6 +142,21 @@ test('storage memory', async (t) => {
       t.same(storage.keysReferences.get('foo'), ['b', 'd', 'z'])
     })
 
+    test('should update the key references, case #4', async (t) => {
+      const storage = createStorage('memory')
+
+      await storage.set('boo', 'bar1', 100, ['a', 'b'])
+      await storage.set('foo', 'bar1', 100, ['a', 'b'])
+      await storage.set('foo', 'bar2', 100, ['z', 'b', 'd'])
+
+      t.same(storage.referencesKeys.get('a'), ['boo'])
+      t.same(storage.referencesKeys.get('b'), ['boo', 'foo'])
+      t.same(storage.referencesKeys.get('d'), ['foo'])
+      t.same(storage.referencesKeys.get('z'), ['foo'])
+
+      t.same(storage.keysReferences.get('foo'), ['b', 'd', 'z'])
+    })
+
     test('should update references of evicted keys (removed by size)', async (t) => {
       const storage = createStorage('memory', { size: 2 })
 
@@ -184,7 +199,7 @@ test('storage memory', async (t) => {
       t.equal(await storage.get('fooz'), undefined)
     })
 
-    test('should remove a key but not references', async (t) => {
+    test('should remove a key but not references if still active', async (t) => {
       const storage = createStorage('memory')
       await storage.set('a', 1, 10, ['fooers', 'vowels'])
       await storage.set('b', 1, 10, ['fooers', 'consonantes'])
