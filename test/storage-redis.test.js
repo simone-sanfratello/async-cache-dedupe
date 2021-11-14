@@ -41,6 +41,8 @@ test('storage redis', async (t) => {
       await storage.set('foo', 'bar', 100)
 
       t.equal(await storage.get('foo'), 'bar')
+
+      storage.end()
     })
 
     test('should get undefined retrieving a non stored key', async (t) => {
@@ -49,6 +51,8 @@ test('storage redis', async (t) => {
       await storage.set('foo', 'bar', 100)
 
       t.equal(await storage.get('no-foo'), undefined)
+
+      storage.end()
     })
 
     test('should get undefined retrieving an expired value', async (t) => {
@@ -58,6 +62,8 @@ test('storage redis', async (t) => {
       await sleep(2000)
 
       t.equal(await storage.get('foo'), undefined)
+
+      storage.end()
     })
 
     test('should not throw on error', async (t) => {
@@ -74,6 +80,8 @@ test('storage redis', async (t) => {
       })
 
       t.equal(await storage.get('foo'), undefined)
+
+      storage.end()
     })
   })
 
@@ -91,6 +99,8 @@ test('storage redis', async (t) => {
 
       const ttl = await storage.store.ttl('foo')
       t.equal(ttl, 100)
+
+      storage.end()
     })
 
     test('should not set a value with ttl < 1', async (t) => {
@@ -99,6 +109,8 @@ test('storage redis', async (t) => {
       await storage.set('foo', 'bar', 0)
 
       t.equal(await storage.get('foo'), undefined)
+
+      storage.end()
     })
 
     test('should set a value with references', async (t) => {
@@ -110,6 +122,8 @@ test('storage redis', async (t) => {
 
       const references = await storage.store.smembers('r:fooers')
       t.same(references, ['foo'])
+
+      storage.end()
     })
 
     test('should not set a references twice', async (t) => {
@@ -122,6 +136,8 @@ test('storage redis', async (t) => {
 
       const references = await storage.store.smembers('r:fooers')
       t.same(references, ['foo'])
+
+      storage.end()
     })
 
     test('should add a key to an existing reference', async (t) => {
@@ -134,6 +150,8 @@ test('storage redis', async (t) => {
       t.equal(references.length, 2)
       t.ok(references.includes('foo1'))
       t.ok(references.includes('foo2'))
+
+      storage.end()
     })
 
     skip('should update the key references, case #1', async (t) => {
@@ -153,6 +171,8 @@ test('storage redis', async (t) => {
 
       references = await storage.store.smembers('r:tooers')
       t.equal(references.length, 0)
+
+      storage.end()
     })
 
     skip('should update the key references, case #2', async (t) => {
@@ -167,6 +187,8 @@ test('storage redis', async (t) => {
       t.same(storage.referencesKeys.get('tooers'), ['foo'])
 
       t.same(storage.keysReferences.get('foo'), ['mooers', 'tooers'])
+
+      storage.end()
     })
 
     skip('should update the key references, case #3', async (t) => {
@@ -182,6 +204,8 @@ test('storage redis', async (t) => {
       t.same(storage.referencesKeys.get('z'), ['foo'])
 
       t.same(storage.keysReferences.get('foo'), ['b', 'd', 'z'])
+
+      storage.end()
     })
 
     test('should not throw on error', async (t) => {
@@ -198,6 +222,8 @@ test('storage redis', async (t) => {
       })
 
       t.doesNotThrow(() => storage.set('foo', 'bar', 1))
+
+      storage.end()
     })
   })
 
@@ -213,6 +239,8 @@ test('storage redis', async (t) => {
       await storage.remove('foo')
 
       t.equal(await storage.get('foo'), undefined)
+
+      storage.end()
     })
 
     test('should remove an non existing key', async (t) => {
@@ -223,6 +251,8 @@ test('storage redis', async (t) => {
 
       t.equal(await storage.get('foo'), 'bar')
       t.equal(await storage.get('fooz'), undefined)
+
+      storage.end()
     })
 
     skip('should remove a key but not references if still active', async (t) => {
@@ -251,6 +281,8 @@ test('storage redis', async (t) => {
       t.same(storage.keysReferences.get('c'), ['fooers', 'consonantes'])
       t.same(storage.keysReferences.get('d'), ['consonantes'])
       t.same(storage.keysReferences.get('e'), ['vowels'])
+
+      storage.end()
     })
 
     test('should not throw on error', async (t) => {
@@ -267,6 +299,8 @@ test('storage redis', async (t) => {
       })
 
       t.doesNotThrow(() => storage.remove('foo'))
+
+      storage.end()
     })
   })
 
@@ -286,6 +320,8 @@ test('storage redis', async (t) => {
       t.equal(await storage.get('foo~1'), undefined)
       t.equal(await storage.get('foo~2'), undefined)
       t.equal(await storage.get('boo~1'), 'fiz')
+
+      storage.end()
     })
 
     test('should not remove storage keys by not existing reference', async (t) => {
@@ -299,6 +335,8 @@ test('storage redis', async (t) => {
       t.equal(await storage.get('foo~1'), 'bar')
       t.equal(await storage.get('foo~2'), 'baz')
       t.equal(await storage.get('boo~1'), 'fiz')
+
+      storage.end()
     })
 
     test('should invalide more than one reference at once', async (t) => {
@@ -312,6 +350,8 @@ test('storage redis', async (t) => {
       t.equal(await storage.get('foo~1'), undefined)
       t.equal(await storage.get('foo~2'), undefined)
       t.equal(await storage.get('boo~1'), undefined)
+
+      storage.end()
     })
 
     skip('should remove storage keys by references, but not the ones still alive', async (t) => {
@@ -336,6 +376,8 @@ test('storage redis', async (t) => {
       t.equal(storage.keysReferences.get('foo~1'), undefined)
       t.equal(storage.keysReferences.get('foo~boo'), undefined)
       t.same(storage.keysReferences.get('boo~1'), ['booers', 'boo:1'])
+
+      storage.end()
     })
 
     skip('should remove a keys and references and also linked ones', async (t) => {
@@ -365,6 +407,8 @@ test('storage redis', async (t) => {
       t.same(storage.keysReferences.get('c'), undefined)
       t.same(storage.keysReferences.get('d'), ['consonantes'])
       t.same(storage.keysReferences.get('e'), ['vowels'])
+
+      storage.end()
     })
 
     test('should not throw on error', async (t) => {
@@ -381,6 +425,8 @@ test('storage redis', async (t) => {
       })
 
       t.doesNotThrow(() => storage.invalidate(['pizzers']))
+
+      storage.end()
     })
   })
 
@@ -397,6 +443,8 @@ test('storage redis', async (t) => {
       await storage.clear()
 
       t.equal(await storage.store.dbsize(), 0)
+
+      storage.end()
     })
 
     test('should clear only keys with common name', async (t) => {
@@ -410,6 +458,8 @@ test('storage redis', async (t) => {
       t.equal(await storage.get('foo~1'), undefined)
       t.equal(await storage.get('foo~2'), undefined)
       t.equal(await storage.get('boo~1'), 'fiz')
+
+      storage.end()
     })
 
     skip('should clear a keys and their references', async (t) => {
@@ -439,6 +489,8 @@ test('storage redis', async (t) => {
       t.same(storage.keysReferences.get('a-c'), undefined)
       t.same(storage.keysReferences.get('b-d'), ['consonantes'])
       t.same(storage.keysReferences.get('b-e'), ['vowels'])
+
+      storage.end()
     })
 
     test('should not throw on error', async (t) => {
@@ -455,6 +507,8 @@ test('storage redis', async (t) => {
       })
 
       t.doesNotThrow(() => storage.clear('foo'))
+
+      storage.end()
     })
   })
 
@@ -470,6 +524,8 @@ test('storage redis', async (t) => {
       await storage.refresh()
 
       t.equal(await storage.store.dbsize(), 0)
+
+      storage.end()
     })
 
     test('should not throw on error', async (t) => {
@@ -485,6 +541,8 @@ test('storage redis', async (t) => {
       })
 
       t.doesNotThrow(() => storage.refresh())
+
+      storage.end()
     })
   })
 })

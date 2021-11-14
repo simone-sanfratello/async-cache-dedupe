@@ -23,10 +23,10 @@ const StorageOptionsType = {
 /**
  * factory for storage, depending on type
  * @param {StorageOptionsType} type
- * @param {StorageMemoryOptions|StorageRedisOptions} options
+ * @param {?StorageMemoryOptions|StorageRedisOptions} options
  * @returns {StorageMemory|StorageRedis}
  */
-function createStorage (type, options) {
+function createStorage (type, options = {}) {
   if (type === StorageOptionsType.redis) {
     return new StorageRedis(options)
   }

@@ -26,8 +26,10 @@
     "tap": "^15.0.10"
   },
   "dependencies": {
+    "abort-controller": "^3.0.0",
     "abstract-logging": "^2.0.1",
     "mnemonist": "^0.38.5",
+    "piscina": "^3.1.0",
     "safe-stable-stringify": "^2.2.0"
   },
   "standard": {
