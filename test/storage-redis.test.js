@@ -60,10 +60,10 @@ test('storage redis', async (t) => {
       t.equal(await storage.get('foo'), undefined)
     })
 
-    test('should not thow on error', async (t) => {
+    test('should not throw on error', async (t) => {
       t.plan(3)
       const storage = createStorage('redis', {
-        client: null,
+        client: {},
         log: {
           debug: () => {},
           error: (error) => {
@@ -184,10 +184,10 @@ test('storage redis', async (t) => {
       t.same(storage.keysReferences.get('foo'), ['b', 'd', 'z'])
     })
 
-    test('should not thow on error', async (t) => {
+    test('should not throw on error', async (t) => {
       t.plan(3)
       const storage = createStorage('redis', {
-        client: null,
+        client: {},
         log: {
           debug: () => {},
           error: (error) => {
@@ -253,10 +253,10 @@ test('storage redis', async (t) => {
       t.same(storage.keysReferences.get('e'), ['vowels'])
     })
 
-    test('should not thow on error', async (t) => {
+    test('should not throw on error', async (t) => {
       t.plan(3)
       const storage = createStorage('redis', {
-        client: null,
+        client: {},
         log: {
           debug: () => {},
           error: (error) => {
@@ -367,10 +367,10 @@ test('storage redis', async (t) => {
       t.same(storage.keysReferences.get('e'), ['vowels'])
     })
 
-    test('should not thow on error', async (t) => {
+    test('should not throw on error', async (t) => {
       t.plan(3)
       const storage = createStorage('redis', {
-        client: null,
+        client: {},
         log: {
           debug: () => {},
           error: (error) => {
@@ -441,10 +441,10 @@ test('storage redis', async (t) => {
       t.same(storage.keysReferences.get('b-e'), ['vowels'])
     })
 
-    test('should not thow on error', async (t) => {
+    test('should not throw on error', async (t) => {
       t.plan(3)
       const storage = createStorage('redis', {
-        client: null,
+        client: {},
         log: {
           debug: () => {},
           error: (error) => {
@@ -472,10 +472,10 @@ test('storage redis', async (t) => {
       t.equal(await storage.store.dbsize(), 0)
     })
 
-    test('should not thow on error', async (t) => {
+    test('should not throw on error', async (t) => {
       t.plan(2)
       const storage = createStorage('redis', {
-        client: null,
+        client: {},
         log: {
           debug: () => {},
           error: (error) => {

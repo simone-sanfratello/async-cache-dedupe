@@ -2,6 +2,7 @@
 
 const stringify = require('safe-stable-stringify')
 const nullLogger = require('abstract-logging')
+// const Redis = require('ioredis')
 const StorageInterface = require('./interface')
 
 /**
@@ -16,10 +17,41 @@ class StorageRedis extends StorageInterface {
    */
   constructor (options) {
     // TODO validate options
+    // TODO options to enable/disable invalidation
     super(options)
-    this.store = options.client
     this.log = options.log || nullLogger
+
+    // TODO init function
+    // if (!options.client) {
+    //   throw new Error('Redis client is required')
+    // }
+    this.store = options.client
+
+    // TODO validation, init function
+    // TODO start a worker thread for pub/sub and move sync references work there
+
+    if (options.client.options) {
+      // this.event = new Redis({
+      //   ...options.client.options,
+      //   connectionName: 'acd-event',
+      //   readOnly: true
+      // })
+
+      // // TODO clear references of expired keys
+      // // this.store.subscribe('__keyevent@${options.db}__:del', (key) => this._removeReferences([key]))
+      // //  'keyevent@0:expired'
+      // this.event.psubscribe(`__key*@${options.db}__:k~*`, (...args) => { console.log('*******', ...args) })
+    }
   }
+
+  // async end () {
+  //   if (!this.event) {
+  //     return
+  //   }
+  //   await this.event.disconnect()
+  // }
+
+  // TODO close to close this.event
 
   /**
    * @param {string} key
@@ -46,6 +78,7 @@ class StorageRedis extends StorageInterface {
    * @param {?string[]} references
    */
   async set (key, value, ttl, references) {
+    // TODO validate key, cant contains * or so
     this.log.debug({ msg: 'acd/storage/redis.set key', key, value, ttl, references })
 
     ttl = Number(ttl)
@@ -67,29 +100,48 @@ class StorageRedis extends StorageInterface {
         writes.push(['sadd', 'r:' + reference, key])
       }
       await this.store.pipeline(writes).exec()
+      // TODO write key->references
     } catch (err) {
       this.log.error({ msg: 'acd/storage/redis.set error', err, key, ttl, references })
     }
-    // TODO clear references of expired keys
   }
 
   /**
-   * remove all entries if name is not provided
-   * remove entries where key starts with name if provided
-   * TODO sync references
-   * @param {?string} name
+   * remove an entry by key
+   * @param {string} key
+   * @returns {boolean} indicates if key was removed
    */
   async remove (key) {
     this.log.debug({ msg: 'acd/storage/redis.remove', key })
     try {
-      this.store.del(key)
+      const removed = this._removeKey(key)
+      this._removeReferences([key])
+      return removed
+    } catch (err) {
+      this.log.error({ msg: 'acd/storage/redis.remove error', err, key })
+      return false
+    }
+  }
+
+  async _removeKey (key) {
+    this.log.debug({ msg: 'acd/storage/redis.remove', key })
+    try {
+      return await this.store.del(key) > 0
     } catch (err) {
       this.log.error({ msg: 'acd/storage/redis.remove error', err, key })
     }
   }
 
   /**
-   * TODO sync references
+   * @param {string[]} keys
+   */
+  _removeReferences (keys) {
+    this.log.debug({ msg: 'acd/storage/redis._removeReferences', keys })
+
+    // TODO remove references->keys and keys->references
+  }
+
+  /**
    * @param {string[]} references
    */
   async invalidate (references) {
@@ -113,6 +165,8 @@ class StorageRedis extends StorageInterface {
       }
 
       await this.store.pipeline(writes).exec()
+
+      // TODO remove references->keys and keys->references
     } catch (err) {
       this.log.error({ msg: 'acd/storage/redis.invalidate error', err, references })
     }
@@ -130,11 +184,13 @@ class StorageRedis extends StorageInterface {
         return
       }
 
-      const keys = await this.store.keys(name + '*')
+      const keys = await this.store.keys(`${name}*`)
       this.log.debug({ msg: 'acd/storage/redis.clear keys', keys })
 
       const removes = keys.map(key => ['del', key])
       await this.store.pipeline(removes).exec()
+
+      // TODO remove references->keys and keys->references
     } catch (err) {
       this.log.error({ msg: 'acd/storage/redis.clear error', err, name })
     }

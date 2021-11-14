@@ -1,3 +1,5 @@
+'use strict'
+
 /**
  * arrays must be sorted and unique
  * @param {*} arrayA

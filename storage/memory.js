@@ -30,7 +30,7 @@ class StorageMemory extends StorageInterface {
   init () {
     this.store = new LRUCache(this.size)
     // key -> references, keys are strings, references are sorted array strings
-    // TODO use a btree instead of array to speed up writes
+    // TODO use a btree instead of array to speed up writes? do benchmarks before
     this.keysReferences = new Map()
     // same as above, bunt inverted
     this.referencesKeys = new Map()

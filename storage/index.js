@@ -30,6 +30,7 @@ function createStorage (type, options) {
   if (type === StorageOptionsType.redis) {
     return new StorageRedis(options)
   }
+  // TODO memory without invalidation
   return new StorageMemory(options)
 }
 

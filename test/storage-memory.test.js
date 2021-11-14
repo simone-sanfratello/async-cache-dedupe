@@ -184,7 +184,7 @@ test('storage memory', async (t) => {
       const storage = createStorage('memory')
       await storage.set('foo', 'bar', 10, ['fooers'])
 
-      await storage.remove('foo')
+      t.equal(await storage.remove('foo'), true)
 
       t.equal(await storage.get('foo'), undefined)
     })
@@ -193,7 +193,7 @@ test('storage memory', async (t) => {
       const storage = createStorage('memory')
       await storage.set('foo', 'bar', 10, ['fooers'])
 
-      await storage.remove('fooz')
+      t.equal(await storage.remove('fooz'), false)
 
       t.equal(await storage.get('foo'), 'bar')
       t.equal(await storage.get('fooz'), undefined)
@@ -207,7 +207,7 @@ test('storage memory', async (t) => {
       await storage.set('d', 1, 10, ['consonantes'])
       await storage.set('e', 1, 10, ['vowels'])
 
-      await storage.remove('a')
+      t.equal(await storage.remove('a'), true)
 
       t.equal(await storage.get('a'), undefined)
       t.equal(await storage.get('b'), 1)
