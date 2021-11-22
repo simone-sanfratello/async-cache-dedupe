@@ -4,32 +4,34 @@ const stringify = require('safe-stable-stringify')
 const nullLogger = require('abstract-logging')
 const StorageInterface = require('./interface')
 const { findNotMatching } = require('../util')
+const Listener = require('./redis-listen')
 
 /**
  * @typedef StorageRedisOptions
- * @property {!store} client
+ * @property {RedisClient} client
  * @property {?Logger} log
- * @property {?boolean} [invalidation=false]
+ * @property {?Object} [invalidation]
+ * @property {!RedisClient} invalidation.listener
  */
 
 class StorageRedis extends StorageInterface {
   /**
    * @param {StorageRedisOptions} options
    */
-  constructor (options) {
+  constructor(options) {
     // TODO validate options
     // if (!options.client) {
     //   throw new Error('Redis client is required')
     // }
-    // if (options.invalidation && !options.listener) {
+    // if (options.invalidation && !options.invalidation.listener) {
     //   throw new Error('Redis listener is required with invalidation')
     // }
     super(options)
     this.options = options
-    this.invalidation = options.invalidation || false
+    this.invalidation = options.invalidation || null
   }
 
-  async init () {
+  async init() {
     this.log = this.options.log || nullLogger
     this.store = this.options.client
 
@@ -38,14 +40,16 @@ class StorageRedis extends StorageInterface {
     }
 
     // TODO documentation
-    await this.listen(this.options.listener)
+    await this.listen()
   }
+
+  // TODO end -> this.listening.end()
 
   /**
    * @param {string} key
    * @returns {undefined|*} undefined if key not found
    */
-  async get (key) {
+  async get(key) {
     this.log.debug({ msg: 'acd/storage/redis.get', key })
 
     try {
@@ -66,7 +70,7 @@ class StorageRedis extends StorageInterface {
    * @param {number} ttl - ttl in seconds; zero means key will not be stored
    * @param {?string[]} references
    */
-  async set (key, value, ttl, references) {
+  async set(key, value, ttl, references) {
     // TODO can keys contains * or so?
     this.log.debug({ msg: 'acd/storage/redis.set key', key, value, ttl, references })
 
@@ -129,7 +133,7 @@ class StorageRedis extends StorageInterface {
    * @param {string} key
    * @returns {boolean} indicates if key was removed
    */
-  async remove (key) {
+  async remove(key) {
     this.log.debug({ msg: 'acd/storage/redis.remove', key })
     try {
       const removed = await this.store.del(key) > 0
@@ -144,7 +148,7 @@ class StorageRedis extends StorageInterface {
    * @param {string[]} references
    * @returns {string[]} removed keys
    */
-  async invalidate (references) {
+  async invalidate(references) {
     if (!this.invalidation) {
       this.log.warn({ msg: 'acd/storage/redis.invalidate, exit due invalidation is disabled' })
       return []
@@ -183,7 +187,7 @@ class StorageRedis extends StorageInterface {
   /**
    * @param {string} name
    */
-  async clear (name) {
+  async clear(name) {
     this.log.debug({ msg: 'acd/storage/redis.clear', name })
 
     try {
@@ -205,7 +209,7 @@ class StorageRedis extends StorageInterface {
     }
   }
 
-  async refresh () {
+  async refresh() {
     try {
       await this.store.flushall()
     } catch (err) {
@@ -216,45 +220,33 @@ class StorageRedis extends StorageInterface {
   /**
    * listen to redis events for expired and deleted keys
    */
-  async listen (listener) {
-    if (!listener) {
+  async listen() {
+    if (!this.invalidation || !this.invalidation.listener) {
       this.log.warn({ msg: 'acd/storage/redis.listen, listener connection is missing' })
       return
     }
 
-    this.listener = listener
-
-    const db = listener.options ? (listener.options.db || 0) : 0
-
-    // TODO check "notify-keyspace-events KEA" on redis if possible, or document
-
-    try {
-      // TODO check listener
-      // TODO listen also maxmemory for evicted keys
-      const subscribed = await listener.subscribe(`__keyevent@${db}__:expired`)
-      if (subscribed !== 1) {
-        throw new Error('cant subscribe to redis')
-      }
-    } catch (err) {
-      this.log.error({ msg: 'acd/storage/redis.listen error on redis subscribe', err })
-      throw err
+    if (this.listening) {
+      this.log.warn({ msg: 'acd/storage/redis.listen, already listening' })
+      return
     }
 
-    // TODO document this
-    // @see https://redis.io/topics/notifications
-    // redis-cli config set notify-keyspace-events KEA
-    // redis-cli --csv psubscribe '__key*__:*'
-
-    listener.on('message', (_channel, key) => {
-      this.clearReferences(key)
+    this.listening = new Listener({
+      log: this.log,
+      listener: this.invalidation.listener,
+      db: listener.options ? (listener.options.db || 0) : 0,
+      onExpired: (key) => { this.clearReferences(key) },
+      // TODO onEvicted: (key) => { this.clearReferences(key) },
+      // TODO this.invalidation.priority? want to set for some reason eligibility priority?
     })
+    await this.listening.start()
   }
 
   /**
    * note: does not throw on error
    * @param {string|string[]} keys
    */
-  async clearReferences (keys) {
+  async clearReferences(keys) {
     try {
       if (!Array.isArray(keys)) { keys = [keys] }
 
