@@ -22,7 +22,7 @@ test('Cache', async (t) => {
     test('should define an instance with storage options', async (t) => {
       const cache = new Cache({ storage: createStorage() })
 
-      cache.define('different-storage', { storage: createStorage('memory', { invalidation: true }) }, () => {})
+      cache.define('different-storage', { storage: createStorage('memory', { invalidation: true }) }, () => { })
       t.equal(cache[kStorages].get('different-storage').invalidation, true)
     })
   })
@@ -33,7 +33,7 @@ test('Cache', async (t) => {
       const cache = new Cache({
         storage: {
           async get (key) {
-            t.equal(key, 'foo')
+            t.equal(key, 'f~foo')
           }
         }
       })
@@ -59,7 +59,7 @@ test('Cache', async (t) => {
       const cache = new Cache({
         storage: {
           async set (key, value, ttl, references) {
-            t.equal(key, 'foo')
+            t.equal(key, 'f~foo')
             t.equal(value, 'bar')
             t.equal(ttl, 9)
             t.same(references, ['fooers'])
@@ -79,6 +79,21 @@ test('Cache', async (t) => {
       cache.set('fiiii', 'key', 'value').catch((err) => {
         t.equal(err.message, 'fiiii is not defined in the cache')
       })
+    })
+  })
+
+  test('use', async (t) => {
+    test('should access to cached entries with `use` function', async (t) => {
+      const cache = new Cache({ ttl: 9, storage: createStorage() })
+
+      cache.define('f', {
+        serialize: ({ p1, p2 }) => `${p1}~${p2}`
+      }, ({ p1, p2 }) => p1 + p2)
+
+      await cache.f({ p1: 1, p2: 2 })
+
+      t.equal(await cache.use('f', '1~2'), 3)
+      t.equal(await cache.use('f', '2~1'), undefined)
     })
   })
 

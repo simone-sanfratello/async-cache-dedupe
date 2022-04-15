@@ -1,6 +1,6 @@
 'use strict'
 
-const { kValues, kStorage, kStorages, kTTL, kOnDedupe, kOnError, kOnHit, kOnMiss } = require('./symbol')
+const { kValues, kStorage, kStorages, kTTL, kDedupeOnly, kOnDedupe, kOnError, kOnHit, kOnMiss } = require('./symbol')
 const stringify = require('safe-stable-stringify')
 const createStorage = require('./storage')
 
@@ -9,6 +9,7 @@ class Cache {
    * @param {!Object} opts
    * @param {!Storage} opts.storage - the storage to use
    * @param {?number} [opts.ttl=0] - in seconds; default is 0 seconds, so it only does dedupe without cache
+   * @param {?bool} [dedupeOnly=false] - TODO doc
    * @param {?function} opts.onDedupe
    * @param {?function} opts.onError
    * @param {?function} opts.onHit
@@ -46,6 +47,7 @@ class Cache {
     this[kStorages].set('_default', options.storage)
 
     this[kTTL] = options.ttl || 0
+    this[kDedupeOnly] = options.dedupeOnly || false
     this[kOnDedupe] = options.onDedupe || noop
     this[kOnError] = options.onError || noop
     this[kOnHit] = options.onHit || noop
@@ -58,6 +60,7 @@ class Cache {
    * @param {?Object} [opts]
    * @param {?Object} [opts.storage] storage to use; default is the main one
    * @param {?number} [opts.ttl] ttl for the results; default ttl is the one passed to the constructor
+   * @param {?bool} [dedupeOnly=false] - TODO doc
    * @param {?function} [opts.onDedupe] function to call on dedupe; default is the one passed to the constructor
    * @param {?function} [opts.onError] function to call on error; default is the one passed to the constructor
    * @param {?function} [opts.onHit] function to call on hit; default is the one passed to the constructor
@@ -101,12 +104,13 @@ class Cache {
     }
 
     const ttl = opts.ttl || this[kTTL]
+    const dedupeOnly = opts.dedupeOnly || this[kDedupeOnly]
     const onDedupe = opts.onDedupe || this[kOnDedupe]
     const onError = opts.onError || this[kOnError]
     const onHit = opts.onHit || this[kOnHit]
     const onMiss = opts.onMiss || this[kOnMiss]
 
-    const wrapper = new Wrapper(func, name, serialize, references, storage, ttl, onDedupe, onError, onHit, onMiss)
+    const wrapper = new Wrapper(func, name, serialize, references, storage, ttl, dedupeOnly, onDedupe, onError, onHit, onMiss)
 
     this[kValues][name] = wrapper
     this[name] = wrapper.add.bind(wrapper)
@@ -149,6 +153,11 @@ class Cache {
     return this[kValues][name].set(key, value, ttl, references)
   }
 
+  // TODO doc unsafe for perfomance reason, no validation
+  use (name, key) {
+    return this[kValues][name].use(key)
+  }
+
   async invalidate (name, references) {
     if (!this[kValues][name]) {
       throw new Error(`${name} is not defined in the cache`)
@@ -174,12 +183,13 @@ class Wrapper {
    * @param {function} references
    * @param {Storage} storage
    * @param {number} ttl
+   * @param {bool} dedupeOnly
    * @param {function} onDedupe
    * @param {function} onError
    * @param {function} onHit
    * @param {function} onMiss
    */
-  constructor (func, name, serialize, references, storage, ttl, onDedupe, onError, onHit, onMiss) {
+  constructor (func, name, serialize, references, storage, ttl, dedupeOnly, onDedupe, onError, onHit, onMiss) {
     this.dedupes = new Map()
     this.func = func
     this.name = name
@@ -188,6 +198,7 @@ class Wrapper {
 
     this.storage = storage
     this.ttl = ttl
+    this.dedupeOnly = dedupeOnly
     this.onDedupe = onDedupe
     this.onError = onError
     this.onHit = onHit
@@ -213,7 +224,7 @@ class Wrapper {
     let query = this.dedupes.get(key)
     if (!query) {
       query = new Query()
-      this.buildPromise(query, args, key)
+      this.buildPromise(query, args, key, this.dedupeOnly)
       this.dedupes.set(key, query)
     } else {
       this.onDedupe(key)
@@ -226,7 +237,52 @@ class Wrapper {
    * wrap the original func to sync storage
    */
   async wrapFunction (args, key) {
+    let data = this.use(key)
+    // istanbul ignore next
+    if (data && typeof data.then === 'function') { data = await data }
+
+    if (data !== undefined) {
+      return data
+    }
+
+    const result = await this.func(args, key)
+
+    if (this.ttl < 1) {
+      return result
+    }
+
     const storageKey = this.getStorageKey(key)
+
+    if (!this.references) {
+      // TODO doc dedupeOnly does not save to storage
+      // cases: fastify-cache because of side effects
+      // references/invalidation can't work
+      // better name: readOnly? (not true)
+      if (!this.dedupeOnly) {
+        let p = this.storage.set(storageKey, result, this.ttl)
+        if (p && typeof p.then === 'function') {
+          p = await p
+        }
+      }
+      return result
+    }
+
+    if (!this.dedupeOnly) {
+      let references = this.references(args, key, result)
+      if (references && typeof references.then === 'function') { references = await references }
+      // TODO validate references?
+      await this.storage.set(storageKey, result, this.ttl, references)
+    }
+
+    return result
+  }
+
+  /**
+   * allow direct use of cache storage
+   */
+  async use (key) {
+    const storageKey = this.getStorageKey(key)
+
     let data = this.storage.get(storageKey)
     if (data && typeof data.then === 'function') { data = await data }
 
@@ -236,27 +292,6 @@ class Wrapper {
     }
 
     this.onMiss(key)
-
-    const result = await this.func(args, key)
-
-    if (this.ttl < 1) {
-      return result
-    }
-
-    if (!this.references) {
-      let p = this.storage.set(storageKey, result, this.ttl)
-      if (p && typeof p.then === 'function') {
-        p = await p
-      }
-      return result
-    }
-
-    let references = this.references(args, key, result)
-    if (references && typeof references.then === 'function') { references = await references }
-    // TODO validate references?
-    await this.storage.set(storageKey, result, this.ttl, references)
-
-    return result
   }
 
   buildPromise (query, args, key) {
@@ -293,11 +328,11 @@ class Wrapper {
   }
 
   async get (key) {
-    return this.storage.get(key)
+    return this.storage.get(this.getStorageKey(key))
   }
 
   async set (key, value, ttl, references) {
-    return this.storage.set(key, value, ttl, references)
+    return this.storage.set(this.getStorageKey(key), value, ttl, references)
   }
 
   async invalidate (references) {
